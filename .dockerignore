@@ -1,0 +1,8 @@
+.venv
+.git
+__pycache__
+.pytest_cache
+tests
+*.zip
+synthetic-*.jpg
+rectified.jpg

@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: easycheck-demo
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: EASYCHECK_RESET_PIN
+        sync: false  # Set a private PIN once in the Render setup form.

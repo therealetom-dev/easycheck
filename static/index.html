@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EasyCheck Prototype</title>
+<style>
+  :root { color-scheme: light; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 920px; margin: 16px auto; padding: 0 12px; background: #f8f8f8; color: #222; }
+  h1 { color: #c7610b; margin-bottom: 4px; }
+  h2 { margin-top: 6px; font-size: 21px; }
+  section { background: white; border: 1px solid #ccc; border-radius: 5px; padding: 15px; margin: 14px 0; }
+  button, input, select { padding: 10px; font: inherit; margin: 4px 3px 4px 0; }
+  button { background: #e47c1f; color: #fff; border: 1px solid #a34e00; border-radius: 3px; cursor: pointer; }
+  button.secondary { background: white; border: 1px solid #999; color: #222; }
+  button:disabled { background: #ddd; color: #777; cursor: not-allowed; border-color: #ccc; }
+  button.selected { background: #914409; }
+  button.danger { background: #8d2525; border-color: #8d2525; }
+  input[type=text],input[type=password] { border: 1px solid #aaa; border-radius: 3px; }
+  .hidden { display: none !important; }
+  .muted { color: #656565; }
+  .code { letter-spacing: .17em; font-size: 30px; font-weight: 700; background: #f5e9df; display: inline-block; padding: 8px 15px; }
+  .ok { color: #147333; } .bad { color: #a31d1d; } .review { color: #956500; }
+  .error { color: #a31d1d; font-weight: bold; } .status { white-space: pre-wrap; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th,td { border-bottom: 1px solid #ddd; padding: 8px 5px; text-align: left; vertical-align: middle; }
+  .scroll { overflow-x: auto; }
+  .stats { font-weight: bold; font-size: 18px; }
+  video,img { width: 100%; max-height: 400px; object-fit: contain; background: #eee; }
+  .small { font-size: 13px; }
+  .tag { display:inline-block; padding:4px 7px; background:#f2f2f2; border:1px solid #ddd; }
+  .row { display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
+  #file { max-width:95%; }
+  .card-button { text-align: left; white-space: normal; }
+  @media(max-width:620px) { h1{font-size:25px;} button{min-height:40px;} .code{font-size:23px;} table{font-size:12px;} }
+</style>
+</head>
+<body>
+<header><h1>EasyCheck</h1><div class="muted">Two-device classroom assessment prototype · Four reusable cards · No accounts</div></header>
+<div id="notice" role="status" class="status"></div>
+
+<div id="landing">
+  <section>
+    <h2>Choose this device's role</h2>
+    <p><strong>Output device</strong> — a laptop or screen that selects the question and displays student results.</p>
+    <button id="join-output">Use this device as OUTPUT</button>
+    <hr>
+    <p><strong>Scanner device</strong> — your phone takes pictures and sends results to the output device.</p>
+    <label>Pairing code from output device: <input id="pair-input" type="text" maxlength="6" placeholder="ABC123" autocapitalize="characters" style="width:110px"></label>
+    <button id="join-scanner">Use this device as SCANNER</button>
+    <p id="occupied" class="muted small"></p>
+  </section>
+  <section>
+    <h2>Printable cards</h2>
+    <p>Print four cards at <strong>100% / actual size</strong> (150 × 70 mm). Cut along the orange edges, then glue onto cardboard. <strong>Use these generated cards:</strong> the ArUco pattern and MCQ locations must match the software.</p>
+    <a href="/cards.pdf?count=4"><button>Download 4-card PDF</button></a>
+    <p class="small muted">This PDF uses two A4 pages (three cards + one card). Printed at actual size, not fit-to-page.</p>
+  </section>
+  <section>
+    <h2>Emergency reset</h2>
+    <p>If either device is stuck in a role, enter the reset PIN to log out both devices and clear all answers.</p>
+    <input id="emergency-pin" type="password" placeholder="Reset PIN" autocomplete="off">
+    <button id="emergency-reset" class="danger">Reset all devices</button>
+  </section>
+</div>
+
+<div id="output" class="hidden">
+  <section>
+    <div class="row"><h2 style="margin:0">Output device</h2><span class="tag">Teacher screen</span></div>
+    <p>Open this same website on your phone. Choose Scanner, then enter this pairing code:</p>
+    <div class="code" id="pair-code">------</div>
+    <div id="paired-status" class="muted" style="margin-top:8px">Waiting for scanner...</div>
+  </section>
+  <section>
+    <h2>1. Choose a question</h2>
+    <p>Switching questions automatically changes the phone's scanning mode. Answers are kept separately for each question.</p>
+    <div class="row">
+      <button id="pick-math" class="card-button secondary">Math: 2 + 2 = ?</button>
+      <button id="pick-mcq" class="card-button secondary">Science: Which is the Red Planet?</button>
+    </div>
+    <p id="active-output-question" class="muted">Select a question above.</p>
+    <p id="teacher-key" class="small"></p>
+  </section>
+  <section>
+    <h2>2. Live results</h2>
+    <div id="stats" class="stats">No question selected.</div>
+    <p id="last-scan-output" class="small muted"></p>
+    <div class="scroll">
+      <table><thead><tr><th>Card ID</th><th>Read answer</th><th>Result</th><th>Teacher correction</th><th>Image</th></tr></thead>
+      <tbody id="results"><tr><td colspan="5" class="muted">No responses yet.</td></tr></tbody></table>
+    </div>
+    <button id="clear-results" class="secondary">Clear answers for this question</button>
+    <button id="show-overlay" class="secondary">View last scanned photo</button>
+    <div id="output-overlay" class="hidden"><h3>Detected cards (green outlines)</h3><img id="output-overlay-img" alt="Last scanned image with outlined cards"></div>
+  </section>
+  <section>
+    <button id="reset-output" class="danger">RESET ALL — log out both devices</button>
+    <button id="leave-output" class="secondary">Release output role</button>
+  </section>
+</div>
+
+<div id="scanner" class="hidden">
+  <section>
+    <div class="row"><h2 style="margin:0">Scanner device</h2><span class="tag">Phone camera</span></div>
+    <p id="scanner-question"><strong>Waiting for the teacher to choose a question...</strong></p>
+    <p id="scanner-instruction" class="muted"></p>
+  </section>
+  <section>
+    <h2>Scan the cards</h2>
+    <p>Arrange up to four cards on any table. Keep the entire orange border visible. Take one sharp photo from above.</p>
+    <label><strong>Take a photo / choose an image:</strong></label>
+    <input id="file" type="file" accept="image/*" capture="environment">
+    <div><button id="send-photo">Scan selected photo</button></div>
+    <details>
+      <summary>Or use the live camera (HTTPS required)</summary>
+      <button id="start-camera" class="secondary">Start live camera</button>
+      <button id="stop-camera" class="secondary">Stop camera</button>
+      <video id="video" autoplay playsinline muted class="hidden"></video>
+      <button id="scan-video" class="hidden">Capture &amp; scan</button>
+    </details>
+    <hr>
+    <button id="demo-scan" class="secondary">Synthetic test scan (no physical cards)</button>
+    <p class="small muted">This button sends a generated four-card photograph through the actual scanning engine. It tests software flow, <strong>not</strong> recognition accuracy on real handwriting.</p>
+    <p id="scan-status" class="status" aria-live="polite">No scans yet.</p>
+    <img id="scan-overlay" class="hidden" alt="Scanned photo with green card outlines">
+  </section>
+  <section>
+    <button id="leave-scanner" class="secondary">Release scanner role</button>
+  </section>
+</div>
+
+<dialog id="crop-dialog" style="max-width:95%;border:1px solid #999;">
+  <h3 id="crop-title">Student response</h3>
+  <img id="crop-img" alt="Cropped answer area" style="width:100%;max-width:750px">
+  <p class="small muted">Review the actual handwritten response and correct the reading on the results table if necessary.</p>
+  <button id="close-crop" class="secondary">Close</button>
+</dialog>
+
+<footer class="muted small" style="margin:20px 0">Prototype only. Use numbered test cards, not students' personal information. OCR results can be wrong; review uncertain answers.</footer>
+<script src="/static/app.js" defer></script>
+</body></html>
